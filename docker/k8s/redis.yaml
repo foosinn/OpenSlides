@@ -1,0 +1,70 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: openslides
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          args:
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+          image: redis:5.0.10-alpine
+          imagePullPolicy: Always
+          ports:
+            - name: redis
+              containerPort: 6379
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 32Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10014
+            runAsGroup: 10014
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: openslides
+spec:
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-slave
+  namespace: openslides
+spec:
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  selector:
+    app: redis

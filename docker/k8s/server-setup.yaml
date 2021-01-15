@@ -1,0 +1,90 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openslides-server-setup
+  namespace: openslides
+  labels:
+    app: openslides-server-setup
+  annotations:
+    keel.sh/approvals: "1"
+    keel.sh/policy: major
+    keel.sh/pollSchedule: "@every 1m"
+    keel.sh/trigger: poll
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openslides-server-setup
+  template:
+    metadata:
+      labels:
+        app: openslides-server-setup
+    spec:
+      containers:
+        - name: server-setup
+          command:
+            - /usr/local/sbin/entrypoint-db-setup
+          image: foosinn/openslides-server:3.3
+          imagePullPolicy: Always
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            runAsUser: 10014
+            runAsGroup: 10014
+            privileged: false
+          envFrom:
+            - secretRef:
+                name: openslides-env
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          ports:
+            - name: http
+              containerPort: 8000
+          volumeMounts:
+            - name: run-secrets
+              mountPath: /run/secrets/django
+              subPath: django
+            - name: run-secrets
+              mountPath: /run/secrets/os_admin
+              subPath: os_admin
+            - name: run-secrets
+              mountPath: /run/secrets/os_user
+              subPath: os_user
+            - name: hacks
+              mountPath: /usr/bin/pg_isready
+              subPath: "true"
+            - name: home
+              mountPath: /var/lib/openslides
+      volumes:
+        - name: run-secrets
+          secret:
+            secretName: openslides-run-secrets
+        - name: hacks
+          configMap:
+            name: hacks
+            defaultMode: 0777
+        - name: home
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: server-setup
+  namespace: openslides
+spec:
+  selector:
+    app: openslides-server-setup
+  ports:
+    - port: 8000
+      targetPort: 8000

@@ -1,0 +1,73 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openslides-client
+  namespace: openslides
+  labels:
+    app: openslides-client
+  annotations:
+    keel.sh/approvals: "1"
+    keel.sh/policy: major
+    keel.sh/pollSchedule: "@every 1m"
+    keel.sh/trigger: poll
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openslides-client
+  template:
+    metadata:
+      labels:
+        app: openslides-client
+    spec:
+      containers:
+        - name: client
+          image: foosinn/openslides-client:3.3
+          imagePullPolicy: Always
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true
+            runAsUser: 10014
+            runAsGroup: 10014
+            privileged: false
+          envFrom:
+            - secretRef:
+                name: openslides-env
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - mountPath: /var/cache/nginx
+              name: nginx-cache
+            - mountPath: /var/run
+              name: nginx-run
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client
+  namespace: openslides
+spec:
+  selector:
+    app: openslides-client
+  ports:
+    - port: 8000
+      targetPort: 80

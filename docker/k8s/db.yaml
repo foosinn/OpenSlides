@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: openslides
+spec:
+  type: ExternalName
+  externalName: postgres.example.com
+  ports:
+    - port: 5432
